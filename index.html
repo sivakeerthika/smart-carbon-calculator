@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Carbon Pro</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js & jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #10B981; 
+      --primary-dark: #059669; 
+      --bg-color: #ECFDF5; 
+      --card-bg: #FFFFFF;
+      --text-main: #111827; 
+      --text-muted: #6B7280; 
+      --border-color: #E5E7EB; 
+      --focus-ring: rgba(16, 185, 129, 0.2);
+      --section-bg: #FAFAFA;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+      --badge-bg: #DCFCE7;
+      --badge-text: #166534;
+      --danger: #EF4444;
+      --danger-bg: #FEF2F2;
+      --savings-color: #059669;
+    }
+
+    [data-theme="dark"] {
+      --primary: #10B981; 
+      --primary-dark: #34D399; 
+      --bg-color: #111827; 
+      --card-bg: #1F2937;
+      --text-main: #F9FAFB; 
+      --text-muted: #9CA3AF; 
+      --border-color: #374151; 
+      --focus-ring: rgba(16, 185, 129, 0.4);
+      --section-bg: #111827;
+      --shadow-color: rgba(0, 0, 0, 0.4);
+      --badge-bg: #065F46;
+      --badge-text: #D1FAE5;
+      --danger: #F87171;
+      --danger-bg: #7F1D1D;
+      --savings-color: #34D399;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+
+    body {
+      background: var(--bg-color); min-height: 100vh; color: var(--text-main);
+      display: flex; justify-content: center; align-items: center; padding: 40px 20px;
+    }
+
+    .app-container {
+      max-width: 1200px; width: 100%; background: var(--card-bg); border-radius: 32px;
+      box-shadow: 0 25px 50px -12px var(--shadow-color); overflow: hidden; display: flex; flex-direction: column; position: relative;
+    }
+
+    @media (min-width: 960px) { .app-container { flex-direction: row; } }
+
+    /* Left Side (Inputs) */
+    .input-section {
+      flex: 1; padding: 40px 35px; border-right: 1px solid var(--border-color); max-height: 90vh; overflow-y: auto;
+    }
+
+    .input-section header {
+      margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-start;
+    }
+
+    .header-text h1 { font-size: 26px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 12px; }
+    .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 6px; line-height: 1.5; }
+
+    .profiles-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+    .profiles-bar select { flex: 1; padding: 10px; font-weight: 600; border-radius: 8px; }
+    .add-profile-btn { padding: 10px 14px; font-weight: 600; background: var(--border-color); border-radius: 8px; border:none; cursor: pointer; color: var(--text-main); }
+    .add-profile-btn:hover { background: var(--text-muted); color: white; }
+
+    .theme-toggle { background: transparent; border: 1px solid var(--border-color); padding: 8px; border-radius: 50%; cursor: pointer; color: var(--text-main); display: flex; align-items: center; justify-content: center; }
+    .theme-toggle:hover { background: var(--border-color); }
+
+    .category-title { font-size: 16px; font-weight: 600; color: var(--primary); margin: 20px 0 10px; display: flex; align-items: center; gap: 8px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 10px; }
+    @media (min-width: 500px) { .form-grid { grid-template-columns: 1fr 1fr; } .form-group.full-width { grid-column: span 2; } }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 13.5px; font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;}
+    
+    .wizard-link { color: var(--primary); font-size: 12px; cursor: pointer; text-decoration: underline; font-weight: 500; }
+    .wizard-link:hover { color: var(--primary-dark); }
+
+    input, select {
+      width: 100%; padding: 12px 14px; font-size: 14.5px; border: 1.5px solid var(--border-color);
+      border-radius: 10px; background-color: var(--card-bg); color: var(--text-main); outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--focus-ring); }
+
+    .actions { display: flex; flex-direction: column; gap: 12px; margin-top: 30px; }
+    button.btn-main { padding: 14px; font-size: 15px; font-weight: 600; border-radius: 10px; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+    .btn-secondary { background: var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { background: var(--text-muted); color: white; }
+    .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: white; }
+
+    /* Right Side (Results) */
+    .results-section { flex: 1.2; padding: 40px 35px; background: var(--section-bg); display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto; }
+
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); text-align: center; animation: fadeIn 0.5s ease; }
+
+    .dashboard { display: none; animation: fadeIn 0.5s ease; height: 100%; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Toggles */
+    .period-toggles { display: flex; gap: 5px; margin-bottom: 20px; background: var(--border-color); padding: 5px; border-radius: 12px; }
+    .toggle-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+    .toggle-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 8px var(--shadow-color); }
+
+    /* Score Card & Gamification */
+    .score-card { background: var(--card-bg); padding: 24px; border-radius: 20px; box-shadow: 0 10px 30px var(--shadow-color); margin-bottom: 20px; border: 1px solid var(--border-color); position: relative; }
+    
+    .gami-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+    .streak { font-size: 14px; font-weight: 600; color: #F59E0B; display: flex; align-items: center; gap: 5px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { font-size: 11px; padding: 4px 8px; background: var(--badge-bg); color: var(--badge-text); border-radius: 12px; font-weight: 700; text-transform: uppercase; }
+
+    .score-title { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 10px; }
+    .score-value { font-size: 48px; font-weight: 700; color: var(--primary); margin: 5px 0; line-height: 1; font-variant-numeric: tabular-nums; }
+    .score-unit { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+    
+    .savings-display { font-size: 15px; font-weight: 700; color: var(--savings-color); background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; margin-bottom: 10px; }
+
+    /* Equivalents & Tips */
+    .insight-box { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--primary); padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 14px; color: var(--text-main); display: flex; gap: 12px; align-items: flex-start; }
+    .insight-box.tip { background: rgba(59, 130, 246, 0.1); border-color: #3B82F6; }
+
+    /* Progress */
+    .progress-container { margin-top: 20px; }
+    .progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+    .progress-track { width: 100%; height: 12px; background: var(--border-color); border-radius: 20px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #34D399, #10B981); border-radius: 20px; width: 0%; transition: width 1s ease; }
+    .over-limit .progress-fill { background: linear-gradient(90deg, #F87171, #EF4444); }
+    .over-limit-text { color: var(--danger) !important; }
+
+    /* Charts */
+    .charts-wrapper { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 20px; }
+    @media (min-width: 600px) { .charts-wrapper { grid-template-columns: 1fr 1fr; } }
+    .chart-card { background: var(--card-bg); padding: 16px; border-radius: 16px; border: 1px solid var(--border-color); }
+    .chart-card h3 { font-size: 14px; margin-bottom: 12px; color: var(--text-main); font-weight: 600; text-align: center; }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* Modals */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+    .modal-content { background: var(--card-bg); padding: 30px; border-radius: 20px; max-width: 400px; width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    .modal-content h2 { margin-bottom: 10px; font-size: 20px; color: var(--text-main); }
+    .modal-content p { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions button { flex: 1; }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <!-- Left Side: Inputs -->
+  <div class="input-section">
+    <header>
+      <div class="header-text">
+        <h1>🌱 Smart Carbon Pro</h1>
+        <p class="subtitle">Detailed footprint optimization</p>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </header>
+
+    <div class="profiles-bar">
+      <select id="profileSelect" onchange="changeProfile()"></select>
+      <button class="add-profile-btn" onclick="openProfileModal()">+ Add User</button>
+    </div>
+
+    <div class="category-title">🚗 Transportation</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Daily Commute (km)</label>
+        <input type="number" id="distance" placeholder="Optional" min="0">
+      </div>
+      <div class="form-group">
+        <label>Primary Vehicle</label>
+        <select id="transport">
+          <option value="electric">Electric Car</option>
+          <option value="hybrid">Hybrid Car</option>
+          <option value="petrol">Petrol/Diesel Car</option>
+          <option value="bus">Public Bus</option>
+          <option value="train">Train</option>
+          <option value="bike">Bicycle / Walk</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <label>Flights This Year (Total Hours)</label>
+        <input type="number" id="flights" placeholder="Optional" min="0">
+      </div>
+    </div>
+
+    <div class="category-title">⚡ Energy & Grid</div>
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label>Regional Energy Grid <span>(API Simulation)</span></label>
+        <select id="region">
+          <option value="global_avg">Global Average Grid Mix</option>
+          <option value="us">United States (Mixed Grid)</option>
+          <option value="eu">European Union (Greener Grid)</option>
+          <option value="india">India (Coal Heavy)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Monthly Electricity (kWh)</label>
+        <input type="number" id="electricity" placeholder="Optional" min="0">
+      </div>
+      <div class="form-group">
+        <label>Monthly Gas (therms)</label>
+        <input type="number" id="gas" placeholder="Optional" min="0">
+      </div>
+    </div>
+    
+    <div class="category-title">♻️ Waste</div>
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label>Recycling Habits</label>
+        <select id="recycling">
+          <option value="always">I recycle everything possible</option>
+          <option value="sometimes">I recycle sometimes</option>
+          <option value="never">I rarely recycle</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="category-title">🍔 Diet</div>
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label>Dietary Preference</label>
+        <select id="food">
+          <option value="vegan">Vegan</option>
+          <option value="vegetarian">Vegetarian</option>
+          <option value="pescatarian">Pescatarian (Fish)</option>
+          <option value="low_meat">Meat (1-2 times/week)</option>
+          <option value="high_meat">Meat (Every day)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="category-title">🎯 Baseline Goals</div>
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label>Goal (Daily kg CO₂) <span class="wizard-link" onclick="openWizard()">Set via Wizard</span></label>
+        <input type="number" id="goal" placeholder="e.g., 20" value="20">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-main btn-primary" onclick="calculate()">Calculate Footprint</button>
+      <div style="display:flex; gap: 10px;">
+        <button class="btn-main btn-secondary" onclick="downloadPDF()" id="pdfBtn" style="display:none; flex:1;">PDF Report</button>
+        <button class="btn-main btn-secondary" onclick="shareDashboard()" id="shareBtn" style="display:none; flex:1; background: #3B82F6; color: white;">Share</button>
+      </div>
+      <button class="btn-main btn-danger" onclick="clearData()" id="clearBtn" style="display:none;">Clear History & Streaks</button>
+    </div>
+  </div>
+
+  <!-- Right Side: Results -->
+  <div class="results-section">
+    <div id="emptyState" class="empty-state">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+      <p style="font-size: 16px; font-weight: 500; color: var(--text-main); margin-top: 15px;">Welcome to your Dashboard</p>
+      <p style="font-size: 13px; margin-top: 5px;">Fill in your routine to unlock your footprint projection.</p>
+    </div>
+
+    <div id="dashboard" class="dashboard">
+      <div class="score-card">
+
+        <div class="period-toggles">
+          <button class="toggle-btn active" id="btnDay" onclick="setPeriod('day')">Daily</button>
+          <button class="toggle-btn" id="btnMonth" onclick="setPeriod('month')">Monthly Projection</button>
+          <button class="toggle-btn" id="btnYear" onclick="setPeriod('year')">Yearly Projection</button>
+        </div>
+        
+        <div class="gami-bar">
+          <div class="streak" id="streakDisplay" style="display:none;">🔥 <span id="streakCount">0</span> Day Streak</div>
+          <div class="badges" id="badgesDisplay"></div>
+        </div>
+
+        <div class="score-title"><span id="displayProfileName">Your</span> Footprint Projection</div>
+        <div class="score-value" id="resultValue">0.00</div>
+        <div class="score-unit">kg CO₂e</div>
+        
+        <div class="savings-display" id="savingsBox" style="display:none;">
+          💰 Total Est. Savings vs Default: $<span id="savingsAmt">0.00</span>
+        </div>
+
+        <div class="insight-box" id="equivalentBox">
+          🌳 <span><b>Real-world impact:</b> <span id="equivalentText">--</span></span>
+        </div>
+
+        <div class="insight-box tip" id="recommendationBox" style="display:none;">
+          💡 <span><span id="recommendationText">--</span></span>
+        </div>
+        
+        <div class="progress-container">
+          <div class="progress-header">
+            <span>Goal: <span id="goalText">20</span> kg</span>
+            <span id="percentText">0%</span>
+          </div>
+          <div class="progress-track" id="progressTrack">
+            <div class="progress-fill" id="bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-wrapper">
+        <div class="chart-card">
+          <h3>Categorical Breakdown</h3>
+          <div style="position: relative; height: 160px; width: 100%;"><canvas id="chart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Historical Trend (Daily Core)</h3>
+          <div style="position: relative; height: 160px; width: 100%;"><canvas id="trendChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Goal Setting Wizard Modal -->
+<div class="modal-overlay" id="wizardModal">
+  <div class="modal-content">
+    <h2>🎯 Smart Goal Wizard</h2>
+    <p>Answer a few questions so we can generate a scientifically accurate baseline target for you.</p>
+    
+    <div class="form-group" style="margin-bottom: 15px;">
+      <label>How many people live in your home?</label>
+      <input type="number" id="wizHouse" value="1" min="1">
+    </div>
+    <div class="form-group" style="margin-bottom: 15px;">
+      <label>Expected commute?</label>
+      <select id="wizCommute">
+        <option value="remote">Work from Home (None)</option>
+        <option value="transit">Public Transit / Bike</option>
+        <option value="car_short">Short Car Commute (under 15km)</option>
+        <option value="car_long">Long Car Commute</option>
+      </select>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-main btn-secondary" onclick="closeWizard()">Cancel</button>
+      <button class="btn-main btn-primary" onclick="finishWizard()">Set My Goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Profile Modal -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-content">
+    <h2>👨‍👩‍👧‍👦 Add Household Profile</h2>
+    <p>Track separate footprints for another family member or roommate.</p>
+    <div class="form-group" style="margin-bottom: 20px;">
+      <label>Profile Name</label>
+      <input type="text" id="newProfileName" placeholder="e.g. Jane Doe">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-main btn-secondary" onclick="closeProfileModal()">Cancel</button>
+      <button class="btn-main btn-primary" onclick="createProfile()">Add Profile</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- DB & PROFILES LOGIC ---
+let db = JSON.parse(localStorage.getItem('carbonProDB'));
+if (!db) {
+    db = {
+        activeId: 'user_1',
+        nextIdNum: 2,
+        profiles: { 'user_1': { name: 'My Profile', history: [], streak: 0, lastDate: null, badges: [], goal: 20, savings: 0 } }
+    };
+    saveDB();
+}
+
+function saveDB() { localStorage.setItem('carbonProDB', JSON.stringify(db)); }
+let activeUser = db.profiles[db.activeId];
+
+let isDark = localStorage.getItem('theme') === 'dark';
+if (isDark) document.documentElement.setAttribute('data-theme', 'dark');
+
+function toggleTheme() {
+    isDark = !isDark;
+    if (isDark) { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); } 
+    else { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('theme', 'light'); }
+    if (chartInstance && trendInstance) {
+        Chart.defaults.color = isDark ? "#9CA3AF" : "#6B7280";
+        Chart.defaults.scale.grid.color = isDark ? "#374151" : "#F3F4F6";
+        chartInstance.update(); trendInstance.update();
+    }
+}
+
+function populateProfiles() {
+    let select = document.getElementById("profileSelect");
+    select.innerHTML = '';
+    for(let id in db.profiles) {
+        let opt = document.createElement('option');
+        opt.value = id; opt.innerText = db.profiles[id].name;
+        if(id === db.activeId) opt.selected = true;
+        select.appendChild(opt);
+    }
+}
+populateProfiles();
+document.getElementById('goal').value = activeUser.goal || 20;
+
+function changeProfile() {
+    let sel = document.getElementById("profileSelect");
+    db.activeId = sel.value;
+    activeUser = db.profiles[db.activeId];
+    document.getElementById('goal').value = activeUser.goal || 20;
+    saveDB();
+    
+    document.getElementById("dashboard").style.display = "none";
+    document.getElementById("emptyState").style.display = "flex";
+    document.getElementById("pdfBtn").style.display = "none";
+    document.getElementById("shareBtn").style.display = "none";
+    document.getElementById("clearBtn").style.display = "none";
+}
+
+function openProfileModal() { document.getElementById('profileModal').style.display = 'flex'; }
+function closeProfileModal() { document.getElementById('profileModal').style.display = 'none'; }
+function createProfile() {
+    let name = document.getElementById('newProfileName').value || "New User";
+    let newId = 'user_' + db.nextIdNum;
+    db.nextIdNum++;
+    db.profiles[newId] = { name: name, history: [], streak: 0, lastDate: null, badges: [], goal: 20, savings: 0 };
+    db.activeId = newId;
+    activeUser = db.profiles[newId];
+    saveDB(); populateProfiles(); changeProfile(); closeProfileModal();
+}
+
+// --- WIZARD LOGIC ---
+function openWizard() { document.getElementById('wizardModal').style.display = 'flex'; }
+function closeWizard() { document.getElementById('wizardModal').style.display = 'none'; }
+function finishWizard() {
+    let houseSize = parseInt(document.getElementById('wizHouse').value) || 1;
+    let commute = document.getElementById('wizCommute').value;
+    let base = 25; 
+    if (commute === 'car_long') base += 10;
+    if (commute === 'transit') base -= 5;
+    if (commute === 'remote') base -= 8;
+    
+    let finalGoal = Math.max(5, base - (houseSize * 1.5));
+    let finalInt = Math.round(finalGoal);
+    
+    document.getElementById('goal').value = finalInt;
+    activeUser.goal = finalInt;
+    saveDB(); closeWizard();
+    alert(`Goal Generated! We suggest a Daily limit of ${finalInt} kg CO₂ for ${activeUser.name}.`);
+}
+
+// --- CALCULATION LOGIC ---
+const gridFactors = { 'global_avg': 0.45, 'us': 0.38, 'eu': 0.23, 'india': 0.70 };
+
+const factors = {
+    transport: { electric: 0.05, hybrid: 0.1, petrol: 0.2, bus: 0.08, train: 0.04, bike: 0.0 },
+    flight_per_hour: 90, 
+    energy: { gas: 5.3 }, 
+    diet: { vegan: 2.9, vegetarian: 3.8, pescatarian: 3.9, low_meat: 4.7, high_meat: 7.2 },
+    waste_base: 1.5,
+    recycling: { always: -0.5, sometimes: -0.2, never: 0 }
+};
+
+let chartInstance = null; let trendInstance = null;
+
+function calculate() {
+    let inputs = {
+        distance: parseFloat(document.getElementById("distance").value) || 0,
+        flights: parseFloat(document.getElementById("flights").value) || 0,
+        tMode: document.getElementById("transport").value,
+        region: document.getElementById("region").value,
+        electricity: parseFloat(document.getElementById("electricity").value) || 0,
+        gas: parseFloat(document.getElementById("gas").value) || 0,
+        recycling: document.getElementById("recycling").value,
+        food: document.getElementById("food").value,
+        goal: parseFloat(document.getElementById("goal").value) || 20
+    };
+
+    activeUser.goal = inputs.goal;
+    
+    // 1. Calculations - Normalized to **DAILY**
+    let d_commute = (inputs.distance * factors.transport[inputs.tMode]);
+    let d_flights = (inputs.flights * factors.flight_per_hour) / 365; // flights entered over year, divide by 365
+    let t_co2 = d_commute + d_flights;
+    
+    let regionIntensity = gridFactors[inputs.region]; 
+    let d_elec = (inputs.electricity * regionIntensity) / 30; // elec entered monthly, divide
+    let d_gas = (inputs.gas * factors.energy.gas) / 30; // gas entered monthly, divide
+    let e_co2 = d_elec + d_gas;
+    
+    let f_co2 = factors.diet[inputs.food];
+    let w_co2 = factors.waste_base + factors.recycling[inputs.recycling];
+
+    let total = t_co2 + e_co2 + f_co2 + w_co2;
+    activeUser.dailyFootprint = { total, t: t_co2, e: e_co2, f: f_co2, w: w_co2 };
+
+    // Cost Savings Calculator logic:
+    let addedSavings = 0;
+    if(inputs.tMode === 'bike') addedSavings += (inputs.distance * 0.60);
+    else if(inputs.tMode === 'bus' || inputs.tMode === 'train') addedSavings += (inputs.distance * 0.40);
+    else if(inputs.tMode === 'electric') addedSavings += (inputs.distance * 0.30);
+    
+    let today = new Date().toLocaleDateString(undefined, {month:'short', day:'numeric'});
+    if (activeUser.lastDate !== today) { // Prevent spamming savings button clicks
+        activeUser.savings = (activeUser.savings || 0) + addedSavings;
+    }
+
+    // 2. UI Updates
+    document.getElementById("displayProfileName").innerText = activeUser.name + "'s";
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    document.getElementById("pdfBtn").style.display = "flex";
+    document.getElementById("shareBtn").style.display = "flex";
+    document.getElementById("clearBtn").style.display = "flex";
+
+    if (activeUser.savings > 0) {
+        document.getElementById('savingsBox').style.display = 'inline-flex';
+        document.getElementById('savingsAmt').innerText = activeUser.savings.toFixed(2);
+    } else { document.getElementById('savingsBox').style.display = 'none'; }
+
+    let recBox = document.getElementById("recommendationBox"); let recText = document.getElementById("recommendationText");
+    recBox.style.display = "flex";
+    if (d_flights > (e_co2 + t_co2) * 0.5) recText.innerHTML = "<b>Recommendation:</b> Flights are massively intensive! Consider carbon offsetting your flight online.";
+    else if (t_co2 > e_co2 && t_co2 > f_co2) recText.innerHTML = "<b>Recommendation:</b> Transport is your biggest source. Biking or public transit will boost your savings!";
+    else if (e_co2 > t_co2 && e_co2 > f_co2) recText.innerHTML = "<b>Recommendation:</b> Energy use is high. Unplug unused electronics to save power and money.";
+    else if (f_co2 > t_co2 && f_co2 > e_co2) recText.innerHTML = "<b>Recommendation:</b> Diet impacts you heavily. One meatless day significantly decreases emissions.";
+    else recText.innerHTML = "<b>Recommendation:</b> Balanced footprint! Keep optimizing your recycling routines to minimize waste.";
+
+    // 4. Gamification
+    if (activeUser.lastDate !== today) {
+        if (total <= activeUser.goal) {
+            activeUser.streak += 1;
+            if(!activeUser.badges.includes("Eco-Warrior") && activeUser.streak >= 3) activeUser.badges.push("Eco-Warrior");
+            if(inputs.tMode === 'bike' && !activeUser.badges.includes("Cyclist")) activeUser.badges.push("Cyclist");
+        } else activeUser.streak = 0;
+        
+        activeUser.history.push({ total: parseFloat(total.toFixed(2)), date: today, t: t_co2, e: e_co2, f: f_co2, w: w_co2 });
+        if(activeUser.history.length > 7) activeUser.history.shift(); 
+        
+        activeUser.lastDate = today;
+    }
+    
+    if(!activeUser.badges.includes("Beginner")) activeUser.badges.push("Beginner");
+    
+    saveDB();
+    renderGamification();
+    
+    // Explicitly set to 'day' view on calculate to refresh projections
+    setPeriod('day', false); 
+    updateTrend(activeUser.history);
+}
+
+function setPeriod(period, animate = true) {
+    if(!activeUser.dailyFootprint) return;
+
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn' + period.charAt(0).toUpperCase() + period.slice(1)).classList.add('active');
+    
+    let multiplier = period === 'month' ? 30 : (period === 'year' ? 365 : 1);
+    
+    let total = activeUser.dailyFootprint.total * multiplier;
+    let goal = activeUser.goal * multiplier;
+    
+    if(animate) animateValue("resultValue", parseFloat(document.getElementById("resultValue").innerText) || 0, total, 400);
+    else document.getElementById("resultValue").innerText = total.toFixed(2);
+    
+    document.getElementById("goalText").innerText = goal.toFixed(0);
+    
+    let percent = (total / goal) * 100;
+    let percentElem = document.getElementById("percentText");
+    percentElem.innerText = Math.round(percent) + "%";
+    
+    let bar = document.getElementById("bar"); let track = document.getElementById("progressTrack");
+    if (percent > 100) {
+        track.classList.add("over-limit"); percentElem.classList.add("over-limit-text"); bar.style.width = "100%";
+    } else {
+        track.classList.remove("over-limit"); percentElem.classList.remove("over-limit-text"); bar.style.width = percent + "%";
+    }
+
+    let annualTotal = activeUser.dailyFootprint.total * 365;
+    let trees = (annualTotal / 21).toFixed(1); 
+    let carMiles = (total / 0.4).toFixed(0); 
+    document.getElementById("equivalentText").innerHTML = `Takes <b>${trees} trees</b> an entire year to absorb, or is like driving a gas car for <b>${carMiles} km</b>.`;
+
+    updateChart(
+        activeUser.dailyFootprint.t * multiplier, 
+        activeUser.dailyFootprint.e * multiplier, 
+        activeUser.dailyFootprint.f * multiplier, 
+        activeUser.dailyFootprint.w * multiplier
+    );
+}
+
+function renderGamification() {
+    let streakDisplay = document.getElementById("streakDisplay");
+    if(activeUser.streak > 0) {
+        streakDisplay.style.display = "flex"; document.getElementById("streakCount").innerText = activeUser.streak;
+    } else { streakDisplay.style.display = "none"; }
+    let badgesHtml = activeUser.badges.map(b => `<div class="badge">${b}</div>`).join('');
+    document.getElementById("badgesDisplay").innerHTML = badgesHtml;
+}
+
+function clearData() {
+    if(confirm(`Are you sure you want to completely clear ${activeUser.name}'s history and streaks?`)) {
+        activeUser.history = []; activeUser.streak = 0; activeUser.badges = []; activeUser.savings = 0; activeUser.lastDate = null; activeUser.dailyFootprint = null;
+        saveDB(); changeProfile(); 
+    }
+}
+
+function shareDashboard() {
+    let total = document.getElementById("resultValue").innerText;
+    let text = `I just tracked my footprint with Smart Carbon Pro! 🌍 My streak is ${activeUser.streak} days, footprint is ${total} kg CO2e, and I've saved $${activeUser.savings.toFixed(2)}!`;
+    if (navigator.share) {
+        navigator.share({ title: 'Smart Carbon Pro', text: text, url: window.location.href }).catch(err => console.log('Error sharing:', err));
+    } else { alert("Copy this to share:\n\n" + text); }
+}
+
+function animateValue(id, start, end, duration) {
+    if (start === end) return; let obj = document.getElementById(id); let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerHTML = (progress * (end - start) + start).toFixed(2);
+        if (progress < 1) window.requestAnimationFrame(step);
+    };
+    window.requestAnimationFrame(step);
+}
+
+Chart.defaults.font.family = "'Outfit', sans-serif";
+Chart.defaults.color = isDark ? "#9CA3AF" : "#6B7280";
+Chart.defaults.scale.grid.color = isDark ? "#374151" : "#F3F4F6";
+
+function updateChart(t, e, f, w) {
+    if (chartInstance) chartInstance.destroy();
+    let ctx = document.getElementById("chart").getContext("2d");
+    chartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: { labels: ["Transport", "Energy", "Diet", "Waste"], datasets: [{ data: [t, e, f, w], backgroundColor: ["#3B82F6", "#F59E0B", "#10B981", "#8B5CF6"], borderWidth: isDark ? 2 : 0, borderColor: isDark ? "#1F2937" : "#fff", hoverOffset: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, font: {size: 11} } } }, cutout: '65%', animation: { animateScale: true } }
+    });
+}
+function updateTrend(history) {
+    if (trendInstance) trendInstance.destroy();
+    if (!history || history.length === 0) return;
+    let ctx = document.getElementById("trendChart").getContext("2d");
+    trendInstance = new Chart(ctx, {
+        type: "bar",
+        data: { labels: history.map(item => item.date), datasets: [ { label: "Transport", data: history.map(i => i.t), backgroundColor: "#3B82F6" }, { label: "Energy", data: history.map(i => i.e), backgroundColor: "#F59E0B" }, { label: "Diet", data: history.map(i => i.f), backgroundColor: "#10B981" }, { label: "Waste", data: history.map(i => i.w), backgroundColor: "#8B5CF6" } ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { font: {size: 10} } }, y: { stacked: true, beginAtZero: true, grid: { drawBorder: false }, ticks: { maxTicksLimit: 4, font: {size: 10} } } } }
+    });
+}
+
+function downloadPDF() {
+    if (!chartInstance) { alert("Please calculate first!"); return; }
+    const { jsPDF } = window.jspdf; let doc = new jsPDF();
+    doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(16, 185, 129); doc.text("Smart Carbon Pro Report", 20, 20);
+    doc.setFontSize(16); doc.setTextColor(31, 41, 55); doc.setFont("helvetica", "bold"); doc.text(`Total footprint (${activeUser.name}): ` + document.getElementById("resultValue").innerText + " kg CO2e", 20, 35);
+    let chartImg = document.getElementById("chart").toDataURL("image/png"); let trendImg = document.getElementById("trendChart").toDataURL("image/png");
+    doc.text("Category Breakdown", 20, 58); doc.addImage(chartImg, "PNG", 30, 65, 80, 80);
+    doc.text("Historical Trend", 20, 160); doc.addImage(trendImg, "PNG", 25, 165, 140, 60);
+    doc.save("Carbon_Pro_Report.pdf");
+}
+</script>
+</body>
+</html>
